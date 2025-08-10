@@ -110,12 +110,23 @@ func main() {
 
 				var msg string
 				if len(v.Text) > 0 && v.Text[0] == '>' {
-					i := 1
-					for i < len(v.Text) && v.Text[i] != '\n' {
-						i++
+					lines := strings.Split(v.Text, "\n")
+					quoteLines := []string{}
+					restLines := []string{}
+
+					foundRest := false
+					for _, line := range lines {
+						if strings.HasPrefix(line, ">") && !foundRest {
+							trimmed := strings.TrimSpace(strings.TrimPrefix(line, ">"))
+							quoteLines = append(quoteLines, trimmed)
+						} else {
+							foundRest = true
+							restLines = append(restLines, line)
+						}
 					}
-					replymsg := v.Text[1:i]
-					rest := strings.TrimSpace(v.Text[i+1:])
+
+					replymsg := strings.Join(quoteLines, "\n")
+					rest := strings.TrimSpace(strings.Join(restLines, "\n"))
 
 					msg = fmt.Sprintf("> %s\n%s: %s", replymsg, nick, rest)
 				} else {
