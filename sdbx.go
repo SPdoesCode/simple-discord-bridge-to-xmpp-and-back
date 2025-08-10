@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/bwmarrin/discordgo"
@@ -35,7 +36,8 @@ func main() {
 		Host:          cfg.XMPP.Server,
 		User:          cfg.XMPP.User,
 		Password:      cfg.XMPP.Password,
-		NoTLS:         false,
+		NoTLS:         true,
+		StartTLS:      true, // explicitly enable STARTTLS
 		Debug:         true,
 		Session:       true,
 		Status:        "chat",
@@ -65,39 +67,13 @@ func main() {
 			return
 		}
 		var msg string
-		if m.MessageReference == nil {
-			channel, err := s.Channel(m.ChannelID)
-			if err != nil {
-				fmt.Println("ERROR:", err)
-				return
-			}
-			msg = fmt.Sprintf("%s > %s: %s", channel.Name, m.Author.Username, m.Content)
-		} else {
-			channelID := m.MessageReference.ChannelID
-			messageID := m.MessageReference.MessageID
-
-			reply, err := s.ChannelMessage(channelID, messageID)
-
-			if err != nil {
-				fmt.Println("ERROR:", err)
-			}
-
-			rchannel, err := s.Channel(reply.ChannelID)
-
-			if err != nil {
-				fmt.Println("ERROR:", err)
-				return
-			}
-
-			channel, err := s.Channel(m.ChannelID)
-			if err != nil {
-				fmt.Println("ERROR:", err)
-				return
-			}
-
-			msg = fmt.Sprintf(">>> %s > %s: %s\n(Reply) %s > %s: %s", rchannel.Name, reply.Author.Username, reply.Content, channel.Name, m.Author.Username, m.Content)
+		if err != nil {
+			fmt.Println("ERROR:", err)
+			return
 		}
-		_, err := xmppbot.Send(xmpp.Chat{Remote: cfg.XMPP.Room, Type: "groupchat", Text: msg})
+		msg = fmt.Sprintf("%s (%s): %s", m.Author.DisplayName(), m.Author.Username, m.Content)
+
+		_, err = xmppbot.Send(xmpp.Chat{Remote: cfg.XMPP.Room, Type: "groupchat", Text: msg})
 		if err != nil {
 			fmt.Println("ERROR:", err)
 		}
@@ -113,12 +89,23 @@ func main() {
 
 			switch v := chat.(type) {
 			case xmpp.Chat:
-				if v.Remote == cfg.XMPP.User || v.Type != "groupchat" {
+				if v.Type != "groupchat" {
+					continue
+				}
+				parts := strings.SplitN(v.Remote, "/", 2)
+				var nick string
+				if len(parts) == 2 {
+					nick = parts[1] // the nickname part
+				} else {
+					nick = v.Remote
+				}
+
+				if nick == cfg.XMPP.Nick || nick == cfg.XMPP.User {
 					continue
 				}
 
 				var msg string
-				msg = fmt.Sprintf("%s: %s", v.Remote, v.Text)
+				msg = fmt.Sprintf("%s: %s", nick, v.Text)
 
 				_, err := discbot.ChannelMessageSend(cfg.Discord.Channel, msg)
 				if err != nil {
