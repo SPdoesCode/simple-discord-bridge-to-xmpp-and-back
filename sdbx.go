@@ -67,12 +67,16 @@ func main() {
 			return
 		}
 		var msg string
-		if err != nil {
-			fmt.Println("ERROR:", err)
-			return
+		if m.MessageReference == nil {
+			msg = fmt.Sprintf("%s (%s): %s", m.Author.DisplayName(), m.Author.Username, m.Content)
+		} else {
+			reply, err := s.ChannelMessage(m.MessageReference.ChannelID, m.MessageReference.MessageID)
+			if err != nil {
+				fmt.Println("ERROR:", err)
+				return
+			}
+			msg = fmt.Sprintf("> %s (%s): %s\n%s (%s): %s", reply.Author.DisplayName(), reply.Author.Username, reply.Content, m.Author.DisplayName(), m.Author.Username, m.Content)
 		}
-		msg = fmt.Sprintf("%s (%s): %s", m.Author.DisplayName(), m.Author.Username, m.Content)
-
 		_, err = xmppbot.Send(xmpp.Chat{Remote: cfg.XMPP.Room, Type: "groupchat", Text: msg})
 		if err != nil {
 			fmt.Println("ERROR:", err)
@@ -105,7 +109,18 @@ func main() {
 				}
 
 				var msg string
-				msg = fmt.Sprintf("%s: %s", nick, v.Text)
+				if len(v.Text) > 0 && v.Text[0] == '>' {
+					i := 1
+					for i < len(v.Text) && v.Text[i] != '\n' {
+						i++
+					}
+					replymsg := v.Text[1:i]
+					rest := strings.TrimSpace(v.Text[i+1:])
+
+					msg = fmt.Sprintf("> %s\n%s: %s", replymsg, nick, rest)
+				} else {
+					msg = fmt.Sprintf("%s: %s", nick, v.Text)
+				}
 
 				_, err := discbot.ChannelMessageSend(cfg.Discord.Channel, msg)
 				if err != nil {
