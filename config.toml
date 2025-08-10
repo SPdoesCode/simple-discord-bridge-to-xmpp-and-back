@@ -1,0 +1,19 @@
+[Discord]
+# The token is the token of the bot
+Token = ""
+# The server for it to be in
+Server = ""
+# The channel for the bot to use
+Channel = ""
+
+[XMPP]
+# The xmpp bot username/id
+User = ""
+# The password to the user
+Password = ""
+# The xmpp server and port
+Server = ""
+# The xmpp room
+Room = ""
+# The nick to use
+Nick = ""
